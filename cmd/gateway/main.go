@@ -31,11 +31,9 @@ func main() {
 		g.Proxies[path] = proxy.NewReverseProxy(path, targetUrl, cfg.TrimPrefix)
 	}
 
-	loggedGateway := middleware.Logging(&g)
-
 	log.Println("Gateway started...")
 
-	if err := http.ListenAndServe(":8090", loggedGateway); err != nil {
+	if err := http.ListenAndServe(":8090", middleware.Logging(middleware.Auth(&g))); err != nil {
 		log.Fatal("Server Failure")
 	}
 }
