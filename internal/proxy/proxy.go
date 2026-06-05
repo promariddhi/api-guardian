@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"api_guardian/internal/middleware"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -8,7 +9,13 @@ import (
 	"time"
 )
 
-func NewReverseProxy(path string, targetUrl *url.URL, trim bool) *httputil.ReverseProxy {
+type ReverseProxy struct {
+	Path      string
+	Handler   http.Handler
+	Permitted []string
+}
+
+func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool) *ReverseProxy {
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(targetUrl)
@@ -23,5 +30,13 @@ func NewReverseProxy(path string, targetUrl *url.URL, trim bool) *httputil.Rever
 		ResponseHeaderTimeout: 3 * time.Second,
 	}
 
-	return proxy
+	handler := http.Handler(proxy)
+	if protected {
+		handler = middleware.Auth(handler)
+	}
+
+	return &ReverseProxy{
+		Path:    path,
+		Handler: handler,
+	}
 }
