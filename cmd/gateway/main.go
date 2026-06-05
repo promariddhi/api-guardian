@@ -13,16 +13,18 @@ import (
 
 func main() {
 	auth_route := config.Route{
-		Path:       "/auth",
-		Url:        "http://localhost:8082",
-		TrimPrefix: true,
-		Protected:  false,
+		Path:         "/auth",
+		Url:          "http://localhost:8082",
+		TrimPrefix:   true,
+		Protected:    false,
+		AllowedRoles: nil,
 	}
 	payments_route := config.Route{
-		Path:       "/payments",
-		Url:        "http://localhost:8081",
-		TrimPrefix: true,
-		Protected:  true,
+		Path:         "/payments",
+		Url:          "http://localhost:8081",
+		TrimPrefix:   true,
+		Protected:    true,
+		AllowedRoles: []string{"admin"},
 	}
 	cfg := config.Config{
 		Routes: map[string]config.Route{
@@ -39,7 +41,7 @@ func main() {
 			log.Fatal()
 		}
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix)
+		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles)
 	}
 
 	log.Println("Gateway started...")

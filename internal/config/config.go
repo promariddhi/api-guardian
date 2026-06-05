@@ -5,8 +5,9 @@ type Config struct {
 }
 
 type Route struct {
-	Path       string
-	Url        string
-	TrimPrefix bool
-	Protected  bool
+	Path         string
+	Url          string
+	TrimPrefix   bool
+	Protected    bool
+	AllowedRoles []string
 }
