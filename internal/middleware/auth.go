@@ -25,9 +25,10 @@ func Auth(next http.Handler, allowedRoles []string) http.Handler {
 			return
 		}
 		if claims, ok := validateToken(parts[1]); ok {
-			if roleAllowed(claims.Role, allowedRoles) {
-				ctx = context.WithValue(r.Context(), "claims", claims)
+			if !roleAllowed(claims.Role, allowedRoles) {
+				http.Error(w, "forbidden", http.StatusForbidden)
 			}
+			ctx = context.WithValue(r.Context(), "claims", claims)
 		} else {
 			http.Error(w, "missing authorization error", http.StatusUnauthorized)
 			return
