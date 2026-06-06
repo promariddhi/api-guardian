@@ -32,7 +32,7 @@ func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool,
 
 	handler := http.Handler(proxy)
 	if protected {
-		handler = middleware.Auth(handler, allowedRoles)
+		handler = middleware.Auth(middleware.UserRateLimiter(handler), allowedRoles)
 	}
 
 	return &ReverseProxy{

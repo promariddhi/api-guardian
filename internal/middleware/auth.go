@@ -9,6 +9,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type contextKey string
+
+const claimsKey contextKey = "claims"
+
 type Claims struct {
 	Subject string `json:"sub"`
 	Role    string `json:"role"`
@@ -27,8 +31,9 @@ func Auth(next http.Handler, allowedRoles []string) http.Handler {
 		if claims, ok := validateToken(parts[1]); ok {
 			if !roleAllowed(claims.Role, allowedRoles) {
 				http.Error(w, "forbidden", http.StatusForbidden)
+				return
 			}
-			ctx = context.WithValue(r.Context(), "claims", claims)
+			ctx = context.WithValue(r.Context(), claimsKey, claims)
 		} else {
 			http.Error(w, "missing authorization error", http.StatusUnauthorized)
 			return
