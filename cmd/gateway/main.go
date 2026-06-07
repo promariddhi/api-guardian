@@ -10,12 +10,9 @@ import (
 	"api_guardian/internal/gateway"
 	"api_guardian/internal/middleware"
 	"api_guardian/internal/proxy"
-	"api_guardian/internal/ratelimiter"
 
 	"github.com/redis/go-redis/v9"
 )
-
-var userRateLimiter = ratelimiter.NewRateLimiter()
 
 func main() {
 	auth_route := config.Route{
@@ -48,6 +45,10 @@ func main() {
 		Protocol: 2,
 	})
 
+	if err := client.Ping(ctx).Err(); err != nil {
+		log.Fatal(err)
+	}
+
 	g := gateway.Gateway{Proxies: make(map[string]*proxy.ReverseProxy)}
 
 	for path, backendRoute := range cfg.Routes {
@@ -56,7 +57,7 @@ func main() {
 			log.Fatal()
 		}
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles, userRateLimiter)
+		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles, client, ctx)
 	}
 
 	log.Println("Gateway started...")

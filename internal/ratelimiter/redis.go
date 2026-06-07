@@ -2,38 +2,52 @@ package ratelimiter
 
 import (
 	"context"
-	"fmt"
-	"strconv"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func RedisAllow(ip string, ctx context.Context, rdb *redis.Client) bool {
+func RedisAllow(key string, ctx context.Context, rdb *redis.Client) bool {
 	now := float64(time.Now().Unix())
-	key := fmt.Sprintf("ip:%s", ip)
-	IPData, _ := rdb.HGetAll(ctx, key).Result()
-	tokens := refillTokens(IPData, now)
-	if tokens < 1 {
-		save(rdb, ctx, key, tokens, now)
+	script := `
+	local key = KEYS[1]
+	local capacity = tonumber(ARGV[1]) 
+	local fillrate = tonumber(ARGV[2])
+	local now = tonumber(ARGV[3])
+
+	local tokens = tonumber(redis.call("HGET", key, "tokens"))
+	local lastSeen = tonumber(redis.call("HGET", key, "lastSeen"))
+
+	if not tokens then
+		redis.call("HSET", key, "tokens", capacity - 1, "lastSeen", now)
+		redis.call("EXPIRE", key, 3600)
+		return 1
+	end
+
+	local elapsed = now - lastSeen
+	tokens = tokens + elapsed * fillrate
+	if  tokens > capacity then
+		tokens = capacity
+	end
+
+	if tokens < 1 then
+		redis.call("HSET", key, "tokens", tokens, "lastSeen", now)
+		redis.call("EXPIRE", key, 3600)
+		return 0
+	end
+
+	tokens = tokens - 1
+	
+	redis.call("HSET", key, "tokens", tokens, "lastSeen", now)
+	redis.call("EXPIRE", key, 3600)
+	return 1
+	`
+
+	allowed, err := rdb.Eval(ctx, script, []string{key}, BUCKET_CAPACITY, BUCKET_FILL_RATE, now).Bool()
+	if err != nil {
+		log.Println(err)
 		return false
 	}
-	tokens--
-	save(rdb, ctx, key, tokens, now)
-	return true
-}
-
-func refillTokens(IPData map[string]string, now float64) float64 {
-	if len(IPData) == 0 {
-		return BUCKET_CAPACITY
-	}
-	tokens, _ := strconv.ParseFloat(IPData["tokens"], 64)
-	lastSeen, _ := strconv.ParseFloat(IPData["lastSeen"], 64)
-	elapsed := now - lastSeen
-	tokens = min(tokens+elapsed*BUCKET_FILL_RATE, BUCKET_CAPACITY)
-	return tokens
-}
-
-func save(rdb *redis.Client, ctx context.Context, key string, tokens float64, lastSeen float64) {
-	rdb.HSet(ctx, key, "tokens", tokens, "lastSeen", lastSeen)
+	return allowed
 }

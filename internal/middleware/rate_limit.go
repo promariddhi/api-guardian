@@ -3,6 +3,7 @@ package middleware
 import (
 	"api_guardian/internal/ratelimiter"
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -12,7 +13,8 @@ import (
 func IPRateLimiter(rdb *redis.Client, ctx context.Context, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fromUrl, _, _ := net.SplitHostPort(r.RemoteAddr)
-		if ok := ratelimiter.RedisAllow(fromUrl, ctx, rdb); !ok {
+		key := fmt.Sprintf("ip:%s", fromUrl)
+		if ok := ratelimiter.RedisAllow(key, ctx, rdb); !ok {
 			http.Error(w, "ip rate limit reached", http.StatusTooManyRequests)
 			return
 		}
@@ -20,10 +22,15 @@ func IPRateLimiter(rdb *redis.Client, ctx context.Context, next http.Handler) ht
 	})
 }
 
-func UserRateLimiter(userRateLimiter *ratelimiter.RateLimiter, next http.Handler) http.Handler {
+func UserRateLimiter(rdb *redis.Client, ctx context.Context, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(claimsKey).(*Claims)
-		if ok := userRateLimiter.Allow(ctx.Subject); !ok {
+		claimsCtx, ok := r.Context().Value(claimsKey).(*Claims)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		key := fmt.Sprintf("userId:%s", claimsCtx.Subject)
+		if ok := ratelimiter.RedisAllow(key, ctx, rdb); !ok {
 			http.Error(w, " rate limit reached", http.StatusTooManyRequests)
 			return
 		}

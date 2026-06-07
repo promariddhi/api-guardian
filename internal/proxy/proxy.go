@@ -2,12 +2,14 @@ package proxy
 
 import (
 	"api_guardian/internal/middleware"
-	"api_guardian/internal/ratelimiter"
+	"context"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type ReverseProxy struct {
@@ -16,7 +18,7 @@ type ReverseProxy struct {
 	AllowedRoles []string
 }
 
-func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool, allowedRoles []string, userRateLimiter *ratelimiter.RateLimiter) *ReverseProxy {
+func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool, allowedRoles []string, rdb *redis.Client, ctx context.Context) *ReverseProxy {
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(targetUrl)
@@ -33,7 +35,7 @@ func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool,
 
 	handler := http.Handler(proxy)
 	if protected {
-		handler = middleware.Auth(middleware.UserRateLimiter(userRateLimiter, handler), allowedRoles)
+		handler = middleware.Auth(middleware.UserRateLimiter(rdb, ctx, handler), allowedRoles)
 	}
 
 	return &ReverseProxy{
