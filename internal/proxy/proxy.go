@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"api_guardian/internal/middleware"
+	"api_guardian/internal/ratelimiter"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -15,7 +16,7 @@ type ReverseProxy struct {
 	AllowedRoles []string
 }
 
-func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool, allowedRoles []string) *ReverseProxy {
+func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool, allowedRoles []string, userRateLimiter *ratelimiter.RateLimiter) *ReverseProxy {
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(targetUrl)
@@ -32,7 +33,7 @@ func NewReverseProxy(path string, protected bool, targetUrl *url.URL, trim bool,
 
 	handler := http.Handler(proxy)
 	if protected {
-		handler = middleware.Auth(middleware.UserRateLimiter(handler), allowedRoles)
+		handler = middleware.Auth(middleware.UserRateLimiter(userRateLimiter, handler), allowedRoles)
 	}
 
 	return &ReverseProxy{

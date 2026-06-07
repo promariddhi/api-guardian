@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"net/url"
@@ -9,7 +10,12 @@ import (
 	"api_guardian/internal/gateway"
 	"api_guardian/internal/middleware"
 	"api_guardian/internal/proxy"
+	"api_guardian/internal/ratelimiter"
+
+	"github.com/redis/go-redis/v9"
 )
+
+var userRateLimiter = ratelimiter.NewRateLimiter()
 
 func main() {
 	auth_route := config.Route{
@@ -33,6 +39,15 @@ func main() {
 		},
 	}
 
+	ctx := context.Background()
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+		Protocol: 2,
+	})
+
 	g := gateway.Gateway{Proxies: make(map[string]*proxy.ReverseProxy)}
 
 	for path, backendRoute := range cfg.Routes {
@@ -41,12 +56,12 @@ func main() {
 			log.Fatal()
 		}
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles)
+		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles, userRateLimiter)
 	}
 
 	log.Println("Gateway started...")
 
-	if err := http.ListenAndServe(":8090", middleware.Logging(middleware.IPRateLimiter(&g))); err != nil {
+	if err := http.ListenAndServe(":8090", middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))); err != nil {
 		log.Fatal("Server Failure")
 	}
 }
