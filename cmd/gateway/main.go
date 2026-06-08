@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"net/url"
 
 	"api_guardian/internal/config"
 	"api_guardian/internal/gateway"
@@ -16,15 +15,13 @@ import (
 
 func main() {
 	auth_route := config.Route{
-		Path:         "/auth",
-		Url:          "http://localhost:8082",
+		Backends:     []string{"http://localhost:8081", "http://localhost:8082"},
 		TrimPrefix:   true,
 		Protected:    false,
 		AllowedRoles: nil,
 	}
 	payments_route := config.Route{
-		Path:         "/payments",
-		Url:          "http://localhost:8081",
+		Backends:     []string{"http://localhost:8083", "http://localhost:8084"},
 		TrimPrefix:   true,
 		Protected:    true,
 		AllowedRoles: []string{"admin"},
@@ -51,13 +48,9 @@ func main() {
 
 	g := gateway.Gateway{Proxies: make(map[string]*proxy.ReverseProxy)}
 
-	for path, backendRoute := range cfg.Routes {
-		targetUrl, err := url.Parse(backendRoute.Url)
-		if err != nil {
-			log.Fatal()
-		}
+	for path, route := range cfg.Routes {
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, cfg.Routes[path].Protected, targetUrl, cfg.Routes[path].TrimPrefix, cfg.Routes[path].AllowedRoles, client, ctx)
+		g.Proxies[path] = proxy.NewReverseProxy(path, route, client, ctx)
 	}
 
 	log.Println("Gateway started...")

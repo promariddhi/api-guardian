@@ -5,7 +5,7 @@ Write-Host "Sending first burst of 60 requests..."
 for ($i = 1; $i -le 60; $i++) {
     try {
         $response = Invoke-WebRequest `
-            -Uri "http://localhost:8090/auth/login" `
+            -Uri "http://localhost:8090/auth" `
             -Method GET `
             -ErrorAction Stop
 
@@ -27,7 +27,7 @@ Write-Host "Sending another 20 requests..."
 for ($i = 1; $i -le 20; $i++) {
     try {
         $response = Invoke-WebRequest `
-            -Uri "http://localhost:8090/auth/login" `
+            -Uri "http://localhost:8090/auth" `
             -Method GET `
             -ErrorAction Stop
 
