@@ -12,28 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	reset  = "\033[0m"
-	red    = "\033[31m"
-	green  = "\033[32m"
-	yellow = "\033[33m"
-	blue   = "\033[34m"
-)
-
 var traceIdKey contextKey = "trace_id"
-
-func colorForStatus(status int) string {
-	switch {
-	case status >= 500:
-		return red
-	case status >= 400:
-		return yellow
-	case status >= 300:
-		return blue
-	default:
-		return green
-	}
-}
 
 type StatusWriter struct {
 	http.ResponseWriter

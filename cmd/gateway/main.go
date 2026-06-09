@@ -19,32 +19,22 @@ import (
 )
 
 func main() {
-	auth_route := config.Route{
-		Backends:     []string{"http://localhost:8081", "http://localhost:8082"},
-		TrimPrefix:   true,
-		Protected:    false,
-		AllowedRoles: nil,
-	}
-	payments_route := config.Route{
-		Backends:     []string{"http://localhost:8083", "http://localhost:8084"},
-		TrimPrefix:   true,
-		Protected:    true,
-		AllowedRoles: []string{"admin"},
-	}
-	cfg := config.Config{
-		Routes: map[string]config.Route{
-			"/auth":     auth_route,
-			"/payments": payments_route,
-		},
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		log.Fatal(err)
 	}
 
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	ctx := context.Background()
 
+	env := config.LoadEnv()
+
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-		Protocol: 2,
+		Addr:     env.RedisAddr,
+		Password: env.RedisPassword,
+		DB:       env.RedisDB,
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -56,9 +46,9 @@ func main() {
 
 	g := gateway.Gateway{Proxies: make(map[string]*proxy.ReverseProxy)}
 
-	for path, route := range cfg.Routes {
+	for _, route := range cfg.Routes {
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, route, client, ctx, appCtx)
+		g.Proxies[route.Path] = proxy.NewReverseProxy(route.Path, route, client, ctx, appCtx)
 	}
 
 	log.Println("Gateway started...")
@@ -68,7 +58,7 @@ func main() {
 	mux.Handle("/", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))))
 
 	server := http.Server{
-		Addr:    ":8090",
+		Addr:    cfg.Server.Port,
 		Handler: mux,
 	}
 
