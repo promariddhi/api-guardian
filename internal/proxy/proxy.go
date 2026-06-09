@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"api_guardian/internal/config"
+	"api_guardian/internal/metrics"
 	"api_guardian/internal/middleware"
 	"context"
 	"log"
@@ -43,10 +44,12 @@ func NewReverseProxy(path string, route config.Route, rdb *redis.Client, ctx con
 					http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 					return
 				}
+			} else {
+				http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+				return
 			}
-			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		}
-
+		metrics.BackendUp.WithLabelValues(backend.url.String()).Set(1)
 	})
 
 	if route.Protected {

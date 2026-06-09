@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"api_guardian/internal/metrics"
 	"log"
 	"net/http"
 	"net/url"
@@ -51,8 +52,11 @@ func (p *backendPool) next() *backend {
 
 func (b *backend) markFailure() {
 	b.failureCount++
-	if b.failureCount > 3 {
+	metrics.BackendFailures.WithLabelValues(b.url.String()).Inc()
+	if b.failureCount >= 3 {
 		b.alive = false
+		metrics.BackendUp.WithLabelValues(b.url.String()).Set(0)
+		metrics.CircuitBreakerTrips.WithLabelValues(b.url.String()).Inc()
 	}
 }
 
@@ -94,4 +98,6 @@ func (b *backend) probeBackend() {
 	b.alive = true
 	b.failureCount = 0
 	log.Printf("backend recovered: %s", b.url.String())
+	metrics.BackendUp.WithLabelValues(b.url.String()).Set(1)
+	metrics.BackendsRecovered.WithLabelValues(b.url.String()).Inc()
 }

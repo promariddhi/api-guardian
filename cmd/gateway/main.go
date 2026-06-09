@@ -10,6 +10,7 @@ import (
 	"api_guardian/internal/middleware"
 	"api_guardian/internal/proxy"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -55,7 +56,11 @@ func main() {
 
 	log.Println("Gateway started...")
 
-	if err := http.ListenAndServe(":8090", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g)))); err != nil {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))))
+
+	if err := http.ListenAndServe(":8090", mux); err != nil {
 		log.Fatal("Server Failure")
 	}
 }

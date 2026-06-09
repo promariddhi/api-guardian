@@ -4,7 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
+
+	"api_guardian/internal/metrics"
 
 	"github.com/google/uuid"
 )
@@ -35,11 +38,18 @@ func colorForStatus(status int) string {
 type StatusWriter struct {
 	http.ResponseWriter
 	status int
+	bytes  int
 }
 
 func (w *StatusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *StatusWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.bytes += n
+	return n, err
 }
 
 func Logging(next http.Handler) http.Handler {
@@ -49,9 +59,18 @@ func Logging(next http.Handler) http.Handler {
 			status:         http.StatusOK,
 		}
 
+		metrics.ActiveRequests.Inc()
+		defer metrics.ActiveRequests.Dec()
+
 		start := time.Now()
 		next.ServeHTTP(sw, r)
+
+		metrics.RequestsTotal.WithLabelValues(r.Method, r.URL.String(), strconv.Itoa(sw.status)).Inc()
+
 		duration := time.Since(start)
+		metrics.RequestDuration.WithLabelValues(r.Method, r.URL.String()).Observe(duration.Seconds())
+
+		metrics.ResponseBytes.WithLabelValues(r.URL.Path).Add(float64(sw.bytes))
 
 		traceId := r.Context().Value(traceIdKey).(string)
 		log.Printf("trace=%s %s %s %d %v", traceId, r.Method, r.URL.Path, sw.status, duration)

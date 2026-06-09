@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"api_guardian/internal/metrics"
 	"api_guardian/internal/ratelimiter"
 	"context"
 	"fmt"
@@ -16,6 +17,7 @@ func IPRateLimiter(rdb *redis.Client, ctx context.Context, next http.Handler) ht
 		key := fmt.Sprintf("ip:%s", fromUrl)
 		if ok := ratelimiter.RedisAllow(key, ctx, rdb); !ok {
 			http.Error(w, "ip rate limit reached", http.StatusTooManyRequests)
+			metrics.RateLimitedRequests.WithLabelValues(r.URL.String()).Inc()
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -31,7 +33,8 @@ func UserRateLimiter(rdb *redis.Client, ctx context.Context, next http.Handler) 
 		}
 		key := fmt.Sprintf("userId:%s", claimsCtx.Subject)
 		if ok := ratelimiter.RedisAllow(key, ctx, rdb); !ok {
-			http.Error(w, " rate limit reached", http.StatusTooManyRequests)
+			http.Error(w, "user rate limit reached", http.StatusTooManyRequests)
+			metrics.RateLimitedRequests.WithLabelValues(r.URL.String()).Inc()
 			return
 		}
 		next.ServeHTTP(w, r)
