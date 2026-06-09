@@ -1,9 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -13,6 +16,8 @@ const (
 	yellow = "\033[33m"
 	blue   = "\033[34m"
 )
+
+var traceIdKey contextKey = "trace_id"
 
 func colorForStatus(status int) string {
 	switch {
@@ -48,17 +53,22 @@ func Logging(next http.Handler) http.Handler {
 		next.ServeHTTP(sw, r)
 		duration := time.Since(start)
 
-		color := colorForStatus(sw.status)
+		traceId := r.Context().Value(traceIdKey).(string)
+		log.Printf("trace=%s %s %s %d %v", traceId, r.Method, r.URL.Path, sw.status, duration)
+	})
+}
 
-		log.Printf(
-			"%s %s %s %s%d%s %v\n",
-			r.RemoteAddr,
-			r.Method,
-			r.URL.Path,
-			color,
-			sw.status,
-			reset,
-			duration,
-		)
+func Tracer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		traceId := r.Header.Get("X-Request-ID")
+		if traceId == "" {
+			traceId = uuid.NewString()
+		}
+
+		w.Header().Set("X-Request-ID", traceId)
+
+		ctx := context.WithValue(r.Context(), traceIdKey, traceId)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

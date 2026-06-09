@@ -55,7 +55,7 @@ func main() {
 
 	log.Println("Gateway started...")
 
-	if err := http.ListenAndServe(":8090", middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))); err != nil {
+	if err := http.ListenAndServe(":8090", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g)))); err != nil {
 		log.Fatal("Server Failure")
 	}
 }
