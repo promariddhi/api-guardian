@@ -4,6 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"api_guardian/internal/config"
 	"api_guardian/internal/gateway"
@@ -47,11 +51,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	appCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	g := gateway.Gateway{Proxies: make(map[string]*proxy.ReverseProxy)}
 
 	for path, route := range cfg.Routes {
 
-		g.Proxies[path] = proxy.NewReverseProxy(path, route, client, ctx)
+		g.Proxies[path] = proxy.NewReverseProxy(path, route, client, ctx, appCtx)
 	}
 
 	log.Println("Gateway started...")
@@ -60,7 +67,37 @@ func main() {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))))
 
-	if err := http.ListenAndServe(":8090", mux); err != nil {
-		log.Fatal("Server Failure")
+	server := http.Server{
+		Addr:    ":8090",
+		Handler: mux,
 	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("Server Failure")
+		}
+	}()
+
+	handleShutdown(&server, client)
+}
+
+func handleShutdown(s *http.Server, client *redis.Client) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
+
+	<-sig
+	log.Println("Shutting down...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := s.Shutdown(ctx); err != nil {
+		log.Printf("HTTP shutdown error: %v", err)
+	}
+
+	if err := client.Close(); err != nil {
+		log.Printf("Redis close error: %v", err)
+	}
+
+	log.Println("Shutdown Complete")
 }

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"api_guardian/internal/metrics"
+	"context"
 	"log"
 	"net/http"
 	"net/url"
@@ -60,13 +61,21 @@ func (b *backend) markFailure() {
 	}
 }
 
-func (p *backendPool) startHealthChecks() {
+func (p *backendPool) startHealthChecks(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Second)
 
 	go func() {
 		defer ticker.Stop()
-		for range ticker.C {
-			p.checkDeadBackends()
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Health Checker Stopped")
+				return
+			case <-ticker.C:
+				p.checkDeadBackends()
+
+			}
 		}
 	}()
 }

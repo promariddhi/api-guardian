@@ -21,9 +21,9 @@ type ReverseProxy struct {
 	BackendPool  *backendPool
 }
 
-func NewReverseProxy(path string, route config.Route, rdb *redis.Client, ctx context.Context) *ReverseProxy {
+func NewReverseProxy(path string, route config.Route, rdb *redis.Client, ctx context.Context, appCtx context.Context) *ReverseProxy {
 	pool := newBackendPool(route.Backends)
-	pool.startHealthChecks()
+	pool.startHealthChecks(appCtx)
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		backend := pool.next()
