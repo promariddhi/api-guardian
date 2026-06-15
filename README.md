@@ -53,7 +53,9 @@ The project was built to explore the core components of modern API gateway archi
 
 ## Architecture
 
-![alt text](images/image-2.png)
+<p align="left">
+  <img src="images/image-2.png" width="300">
+</p>
 
 ---
 
