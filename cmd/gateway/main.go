@@ -58,13 +58,13 @@ func main() {
 	mux.Handle("/", middleware.Tracer(middleware.Logging(middleware.IPRateLimiter(client, ctx, &g))))
 
 	server := http.Server{
-		Addr:    cfg.Server.Port,
+		Addr:    ":" + cfg.Server.Port,
 		Handler: mux,
 	}
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("Server Failure")
+			log.Fatal("Server Failure: ", err)
 		}
 	}()
 
