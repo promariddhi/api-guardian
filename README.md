@@ -53,30 +53,7 @@ The project was built to explore the core components of modern API gateway archi
 
 ## Architecture
 
-```text
-Client
-   │
-   ▼
-┌─────────────┐
-│ API Guardian│
-└──────┬──────┘
-       │
-       ├── Authentication
-       ├── RBAC
-       ├── Rate Limiting
-       ├── Load Balancing
-       ├── Health Checks
-       ├── Metrics
-       │
-       ▼
- ┌──────────────┐
- │ Backend Pool │
- └──────┬───────┘
-        │
- ┌──────┴──────┐
- ▼             ▼
-Service A   Service B
-```
+![alt text](images/image-2.png)
 
 ---
 
@@ -203,6 +180,14 @@ trace=f6b5b0b9-b0b8-4792-a45d-95b45deac1a5 GET /auth 200 54ms
 
 ---
 
+## Screenshots
+
+### Dashboard
+![alt text](images/image.png)
+
+### Structured Logging
+![alt text](images/image-1.png)
+
 ## Project Goals
 
 This project was built to gain hands-on experience with:
@@ -221,7 +206,6 @@ This project was built to gain hands-on experience with:
 
 ## Future Improvements
 
-* Admin dashboard
 * Docker Compose deployment
 * Request caching
 * Least connections based load balancing
