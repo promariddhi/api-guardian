@@ -1,0 +1,28 @@
+server:
+  port: "8080"
+
+routes:
+  - path: /users
+    backends:
+      - http://backend1:8080
+      - http://backend2:8080
+    trim_prefix: false
+    protected: true
+    allowed_roles:
+      - admin
+      - user
+
+  - path: /admin
+    backends:
+      - http://backend3:8080
+    trim_prefix: true
+    protected: true
+    allowed_roles:
+      - admin
+
+  - path: /public
+    backends:
+      - http://backend4:8080
+    trim_prefix: false
+    protected: false
+    allowed_roles: []

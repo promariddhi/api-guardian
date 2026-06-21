@@ -1,3 +1,0 @@
-routes:
-  /auth: http://localhost:8082
-  /payments: http://localhost:8081
