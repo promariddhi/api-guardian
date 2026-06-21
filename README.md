@@ -124,46 +124,49 @@ Prometheus metrics are exposed at:
 
 ---
 
-## Running Locally
+## Running
 
-### Prerequisites
+### Using Docker Compose (Recommended)
 
-* Go 1.25+
-* Redis
+```bash
+docker compose up --build
+```
 
-### Install Dependencies
+The following services will be started:
+
+- API Guardian
+- Redis
+- Prometheus
+
+The gateway will be available at:
+
+```text
+http://localhost:8090
+```
+
+### Running Without Docker
+
+#### Prerequisites
+
+- Go 1.25+
+- Redis
 
 ```bash
 go mod download
 ```
 
-### Start Redis
+Start Redis:
 
 ```bash
 docker run -p 6379:6379 redis
 ```
 
-### Configure Environment
+Create `.env` from `.env.example`.
 
-Create a `.env` file:
-
-```env
-REDIS_ADDR=localhost:6379
-REDIS_PASSWORD=
-REDIS_DB=0
-JWT_SECRET=secret
-```
-
-### Run
+Run:
 
 ```bash
-go run .
-```
-
-Gateway will start on:
-
-```text
-http://localhost:8090
+go run ./cmd/gateway
 ```
 
 ---
@@ -194,21 +197,21 @@ trace=f6b5b0b9-b0b8-4792-a45d-95b45deac1a5 GET /auth 200 54ms
 
 This project was built to gain hands-on experience with:
 
-* Reverse proxies
-* API gateways
-* Load balancing
-* Distributed rate limiting
-* Health checking
-* Failure Recovery
-* Idempotent Retries
+* Reverse proxy implementation
+* API gateway design
 * JWT authentication
-* Observability and metrics
+* Role-based access control
+* Redis-backed distributed rate limiting
+* Health checking and backend recovery
+* Round-robin load balancing
+* Request tracing
+* Prometheus instrumentation
+* Graceful shutdown
 
 ---
 
 ## Future Improvements
 
-* Docker Compose deployment
 * Request caching
 * Least connections based load balancing
 * Configurable health check
